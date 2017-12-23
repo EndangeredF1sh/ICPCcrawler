@@ -45,6 +45,7 @@ def appear(tmp, list) :
         if each['user'] == tmp['user'] and each['problem'] == tmp['problem'] : return True
     return False
 
+
 def showList(Ballon_list, vis):
     cnt = 0
     for tmp in Ballon_list:
@@ -57,6 +58,7 @@ def showList(Ballon_list, vis):
             cnt = cnt + 1
         if cnt == 10: break
 
+# 每1s更新一次最新AC状况（单页）
 class mainThread(threading.Thread):
     def __init__(self, work_queue):
         super().__init__()  # 必须调用
@@ -87,15 +89,15 @@ class mainThread(threading.Thread):
 
             while not self.work_queue.empty():
                 self.work_queue.get()
-            # self.work_queue.put(notRepeatList) # 多线程通信
             self.work_queue.put(rawlist)
             time.sleep(1)
 
 
 class watchdogThread(threading.Thread):
-    def __init__(self, work_queue):
+    def __init__(self, work_queue, command_queue):
         super().__init__()
         self.work_queue = work_queue
+        self.command_queue = command_queue
 
     def run(self):
         Ballon_list = self.work_queue.get()
@@ -104,40 +106,63 @@ class watchdogThread(threading.Thread):
         showList(Ballon_list, vis)
         while True:
             try:
-                index = eval(input())
-                if index > 0:
-                    cnt = 0
-                    for tmp in Ballon_list:
-                        if index == tmp['ballon_id']:
-                            vis.append(index)
-                            alreadySend.append(Ballon_list[cnt])
-                            break
-                        cnt = cnt + 1
-                    # time.sleep(5)
+                if self.command_queue.empty():
                     Ballon_list = self.work_queue.get()
-                    showList(Ballon_list, vis)
-                elif index == 0 :
-                    Ballon_list = self.work_queue.get()
-                    showList(Ballon_list, vis)
+                    # pp("refresh!")
                 else:
-                    for tmp in reversed(alreadySend): print(tmp)
-            except:
+                    command = self.command_queue.get()
+                    if command == "refresh":
+                        showList(Ballon_list, vis)
+                    else:
+                        index = eval(command)
+                        if index > 0:
+                            cnt = 0
+                            for tmp in Ballon_list:
+                                if index == tmp['ballon_id']:
+                                    vis.append(index)
+                                    alreadySend.append(Ballon_list[cnt])
+                                    break
+                                cnt = cnt + 1
+                            # time.sleep(5)
+                            # Ballon_list = self.work_queue.get()
+                        #     showList(Ballon_list, vis)
+                            showList(Ballon_list, vis)
+                        else:
+                            for tmp in reversed(alreadySend):
+                                print(tmp)
+
+            except Exception:
                 Ballon_list = self.work_queue.get()
-                showList(Ballon_list,vis)
+                showList(Ballon_list, vis)
                 print("No!")
 
+
+class commandThread(threading.Thread):
+    def __init__(self, command_queue):
+        super().__init__()
+        self.command_queue = command_queue
+
+    def run(self):
+        while True:
+            command = input()
+            self.command_queue.put(command)
 
 
 def main():
     work_queue = queue.Queue()
+    command_queue = queue.Queue()
     thread1 = mainThread(work_queue=work_queue)
     thread1.daemon = True
     thread1.start()
     time.sleep(3)
-    watchdog = watchdogThread(work_queue=work_queue)
+    watchdog = watchdogThread(work_queue=work_queue, command_queue=command_queue)
     watchdog.daemon = True
     watchdog.start()
+    command = commandThread(command_queue=command_queue)
+    command.daemon = True
+    command.start()
     work_queue.join()
+    command_queue.join()
 
 
 if __name__ == '__main__':
