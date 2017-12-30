@@ -16,5 +16,5 @@
 * Windows暂未测试
 ## 交流
 * EndangeredFish <zwy346545141@gmail.com>
-* LucienShui <lucienshui.outlook.com>
+* LucienShui <lucienshui@outlook.com>
 * 在issue中提出意见
