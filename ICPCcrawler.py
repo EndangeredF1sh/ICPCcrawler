@@ -1,7 +1,8 @@
-#-*- coding:utf-8 -*-
+# -*- coding:utf-8 -*-
 #
 # @author EndangeredFish <zwy346545141@gmail.com>   LucienShui <lucienshui.outlook.com>    hamburger
 # @Date 12.23.2017
+# @Version 1.1
 import requests
 import re
 import queue
@@ -9,25 +10,21 @@ import threading
 import time
 from pprint import pprint as pp
 
-# 登陆地址
-urllogin = 'http://exam.upc.edu.cn/login.php'
-# 榜单地址
-urlstatus = "http://exam.upc.edu.cn/status.php?problem_id=&user_id=&language=-1&jresult=4"
+# 登陆地址 填入监控的HUSTOJ的登录页面地址
+urllogin = 'http://sample.com/login.php'
+# 榜单地址 填入待监控比赛的status/状态界面地址
+# 最好设置筛选结果为"正确"，即搭配"&jresult=4"参数使用，可搭配"&cid="参数来实现对某场特定比赛的监控 如例子中cid为1275。
+urlstatus = "http://sample.com/status.php?problem_id=&user_id=&cid=1275&language=-1&jresult=4"
 # 登录信息
-data = {"user_id": "summer17016", "password": "sqy201309"}
+data = {"user_id": "your account", "password": "your password"}  # 填入可登录所需平台的账号和密码
 headers = {"Accept": "text/html,application/xhtml+xml,application/xml;",
            "Accept-Encoding": "gzip",
            "Accept-Language": "zh-CN,zh;q=0.8",
-           "Referer": "http://exam.upc.edu.cn/",
+           "Referer": "http://sample.com", # 最好也修改一下
            "User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36"
            }
 # 正则表达式
 pattern = "<tr class='(even|odd)row'><td>([0-9]+)</td><td><a href='userinfo\.php\?user=([a-zA-Z0-9_]+)'>([a-zA-Z0-9_]+)</a></td><td><div class=center><a href='problem\.php\?id=(\d+)'>(\d+)</a></div></td><td><span class='btn btn-success'>(\*?)正确</span>"
-
-
-def producer(out_q,data):
-    while True:
-        out_q.put(data)
 
 
 def login():
@@ -58,7 +55,8 @@ def showList(Ballon_list, vis):
             cnt = cnt + 1
         if cnt == 10: break
 
-# 每1s更新一次最新AC状况（单页）
+
+# AC状态维护 每1s更新一次最新AC状况（单页）
 class mainThread(threading.Thread):
     def __init__(self, work_queue):
         super().__init__()  # 必须调用
@@ -93,6 +91,7 @@ class mainThread(threading.Thread):
             time.sleep(1)
 
 
+# 气球管理模块
 class watchdogThread(threading.Thread):
     def __init__(self, work_queue, command_queue):
         super().__init__()
@@ -106,6 +105,7 @@ class watchdogThread(threading.Thread):
         showList(Ballon_list, vis)
         while True:
             try:
+                # 自动刷新
                 if self.command_queue.empty():
                     Ballon_list = self.work_queue.get()
                     # pp("refresh!")
@@ -137,6 +137,7 @@ class watchdogThread(threading.Thread):
                 print("No!")
 
 
+# 命令监控模块
 class commandThread(threading.Thread):
     def __init__(self, command_queue):
         super().__init__()
